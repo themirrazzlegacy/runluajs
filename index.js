@@ -96,6 +96,7 @@ function parseArgument(argument,scope){
     return current
 }
 
+
 function parseArguments(arguments,scope){
     //console.log("scope arg " +JSON.stringify(scope))
     let final;
@@ -116,7 +117,7 @@ function parseExpression(expression,scope){
     
     switch(expression.type){
         case "BooleanLiteral":
-            return parseArgument(expression)
+            return parseArgument(expression,scope)
             break;
         case "BinaryExpression":
             switch(expression.operator){
@@ -154,10 +155,14 @@ function parseExpression(expression,scope){
                     return parseArgument(expression.left,scope) == parseArgument(expression.right,scope)
                     break;
             }
+        case "Identifier":
+            var _Pa= parseArgument(expression,scope);
+            console.log(_Pa);
+            return _Pa;
         case "LogicalExpression":
             switch(expression.operator){
                 case "and":
-                    return parseExpression(expression.left) == true && parseExpression(expression.right) == true
+                    return parseExpression(expression.left,scope) == true && parseExpression(expression.right,scope) == true
                     break;
             }
             break;
@@ -201,7 +206,7 @@ async function executeBlock(block,scope){
             for(let i = 0; i < variables.length; i++){
                 let variable = variables[i]
                 let init = inits[i]
-                data[variable.name] = parseArguments([init],scope)
+                data[variable.name] = await parseArguments([init],scope)
             }
             break;
 
@@ -246,7 +251,7 @@ async function executeBlock(block,scope){
 }
 
 function checkClause(clause,scope){
-    if(parseExpression(clause.condition)==true){
+    if(parseExpression(clause.condition,scope)==true){
         executeBlocks(clause.body,scope)
     }
 }
@@ -256,14 +261,14 @@ function checkClauseBlock(clauses,scope){
     for(let i = 0; i < clauses.length; i++){
         let clause = clauses[i]
         if(clause.type != "ElseClause"){
-            if(parseExpression(clause.condition)== true){
-                executeBlocks(clause.body)
+            if(parseExpression(clause.condition,scope)== true){
+                executeBlocks(clause.body,scope)
                 break;
             }else{
                 continue;
             }
         }else{
-            executeBlocks(clause.body)
+            executeBlocks(clause.body,scope)
         }
     }
 
@@ -291,7 +296,7 @@ return {
     interpret: async (code, methods)=>{
         var body = code.body
         functions = {...functions, ...methods}
-        return new Promise((resolve,reject)=>{ 
+        return new Promise(async (resolve,reject)=>{ 
             resolve(executeBlocks(body,{}));
         })
     },
