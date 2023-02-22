@@ -1,13 +1,310 @@
 (function () {
-    if(typeof module !== 'undefined') {
-        var luaparse = require('luaparse');
-    }
-    var LuaInterpreter = (()=>{var e={},t={print:{call:(arguments,e)=>{console.log(r(arguments,e))}},Date:{call:(arguments,e)=>({now:Date.now()})},type:{call:(arguments,e)=>typeof a(arguments[0],e)},wait:{call:async(arguments,e)=>{let t=a(arguments[1]),r=a(arguments[0]);return null==t||"s"==t?new Promise((t=>setTimeout(t,1e3*r,e))):"ms"==t?new Promise((t=>setTimeout(t,r,e))):void 0}}};function a(a,r){if(null==a)return;let l;switch(a.type){case"Identifier":l=null!=r[a.name]?r[a.name]:null!=e[a.name]?e[a.name]:a.name+" is undefined";break;case"StringLiteral":l=a.raw.substr(1,a.raw.length-2);break;case"NumericLiteral":l=parseInt(a.value);break;case"Identifier":l=" "+r[a.name]||e[a.name];break;case"CallExpression":t[a.base.name]&&(l=t[a.base.name].call(a.arguments,r));break;case"BooleanLiteral":return a.value;case"BinaryExpression":case"MemberExpression":l=n(a,r)}return l}function r(arguments,e){let t;for(let r=0;r<arguments.length;r++){argument=arguments[r];let n=a(argument,e);0==r?t=n:t+=n}return t}function n(e,t){switch(e.type){case"BooleanLiteral":return a(e);case"BinaryExpression":switch(e.operator){case"+":return a(e.left,t)+a(e.right,t);case"*":let r=a(e.left,t),n=a(e.right,t),l=typeof n;if("string"==(typeof r).toString()&&"number"==l.toString()){final="";for(let e=0;e<n;e++)final+=r;return final}return r*n;case">=":return a(e.left,t)>=a(e.right,t);case"<=":return a(e.left,t)<=a(e.right,t);case"<":return a(e.left,t)<a(e.right,t);case">":return a(e.left,t)>a(e.right,t);case"==":return a(e.left,t)==a(e.right,t)}case"LogicalExpression":if("and"===e.operator)return 1==n(e.left)&&1==n(e.right);break;case"MemberExpression":if("."===e.indexer)return a(e.base,t)[e.identifier.name]}}async function l(l,s){switch(l.type){case"CallStatement":let o=l.expression;if("CallExpression"===o.type){let e=o;t[e.base.name]&&await t[e.base.name].call(e.arguments,s)}break;case"AssignmentStatement":let c=l.variables,u=l.init;for(let t=0;t<c.length;t++){let a=c[t],n=u[t];e[a.name]=r([n],s)}break;case"LocalStatement":let m=l.variables,f=l.init;for(let e=0;e<m.length;e++){let t=m[e],a=f[e];return console.log(s),s[t.name]=r([a],s),{scope:s}}break;case"IfStatement":!function(e,t){for(let t=0;t<e.length;t++){let a=e[t];if("ElseClause"==a.type)i(a.body);else if(1==n(a.condition)){i(a.body);break}}}(l.clauses);break;case"FunctionDeclaration":t[l.identifier.name]={call:(arguments,e)=>{let t={};for(let e=0;e<l.parameters.length;e++){t[l.parameters[e].name]=a(arguments[e])}e={...e,...t},i(l.body,e)}};break;case"ForNumericStatement":for(s[l.variable.name]=a(l.start),a(l.start);s[l.variable.name]<a(l.end);s[l.variable.name]+=a(l.step))i(l.body,s);s[l.variable.name]=void 0}}async function i(e,t){for(let a=0;a<e.length;a++){let r=e[a];null==t&&(t={});let n=await l(r,t);null!=n&&null!=n.scope&&(t={...t,...n.scope})}};return{interpret:async(e,a)=>{var r=e.body;return t={...t,...a},new Promise(((e,t)=>{e(i(r,{}))}))}}})();
-    var Lua = {
-        execute: async (source, scope) => {
-            var ast = luaparse.parse(source);
-            return await LuaInterpreter.interpret(ast,scope);
+    var lp = (typeof window=='undefined')?require('luaparse'):window.luaparse;
+    var LuaInterpreter = (() => {
+var data = {}//TableConstructorExpression
+var functions = {
+    print:{call:(arguments,scope)=>{
+        //console.log("scope call " +JSON.stringify(scope))
+        console.log(parseArguments(arguments,scope))
+    }},
+    Date:{call:(arguments,scope)=>{
+        return {
+            now : Date.now()
         }
+    }},
+    type:{call:(arguments,scope)=>{
+        return typeof parseArgument(arguments[0],scope)
+    }},
+    wait:{call: async (arguments,scope)=>{
+        let timeScale = parseArgument(arguments[1])
+        let length = parseArgument(arguments[0])
+        if(timeScale== undefined || timeScale == "s"){
+            return new Promise(resolve => setTimeout(resolve,length*1000,scope));
+        }else if(timeScale== "ms"){
+            return new Promise(resolve => setTimeout(resolve, length,scope));
+        }
+    }}
+}
+
+function parseArgument(argument,scope){
+    if(argument == undefined){
+        return undefined;
+    }
+    let current;
+        switch(argument.type){
+            case "Identifier":
+                if(scope[argument.name] != undefined){
+                    current = scope[argument.name]
+                }else if(data[argument.name] != undefined){
+                    current = data[argument.name]
+                }else{
+                    current = argument.name + " is undefined"
+                }
+                //console.log("scope : " + current)
+                break;
+            case "StringLiteral":
+                current = argument.raw.substr(1, argument.raw.length-2)
+                break;
+            case "NumericLiteral":
+                current = parseInt(argument.value)
+                break;
+            case "Identifier":
+                current = " " + scope[argument.name] || data[argument.name] 
+                break;
+            case "CallExpression":
+                    if(functions[argument.base.name]){
+                        current = functions[argument.base.name].call(argument.arguments,scope)
+                    }
+                break;
+            case "BooleanLiteral":
+                return argument.value
+                break;
+            case "IndexExpression":
+                current = parseExpression(argument, scope)
+                break;
+            case "BinaryExpression" || "LogicalExpression" :
+                current = parseExpression(argument,scope)
+                break;
+            case "MemberExpression":
+                current = parseExpression(argument,scope)
+                break;
+            case "TableConstructorExpression":
+                var t_fields = argument.fields;
+                var t_io = false;
+                var t_arr = [];
+                var t_ob = {};
+                for(var qC=0;qC<t_fields.length;qC++) {
+                    if(t_fields[qC].type=='TableKeyString') {
+                        t_io = true;
+                        t_ob[t_fields[qC].key.name]
+                        = parseArgument(
+                            t_fields[qC].value,
+                            scope
+                        )
+                    } else {
+                        t_arr.push(
+                            parseArgument(
+                                t_fields[qC].value,
+                                scope
+                            )
+                        );
+                    }
+                }
+                return t_io?t_ob:t_arr;
+                break
+            }
+    return current
+}
+
+function parseArguments(arguments,scope){
+    //console.log("scope arg " +JSON.stringify(scope))
+    let final;
+    for(let i=0;i<arguments.length;i++){
+        argument = arguments[i]
+        let current = parseArgument(argument,scope)
+        if(i == 0){
+            final = current
+        }else{
+            final+=current
+        }
+        }
+        
+        return final
+    }
+
+function parseExpression(expression,scope){
+    
+    switch(expression.type){
+        case "BooleanLiteral":
+            return parseArgument(expression)
+            break;
+        case "BinaryExpression":
+            switch(expression.operator){
+                case "+":
+                    return parseArgument(expression.left,scope) + parseArgument(expression.right,scope)
+                    break;
+                case "*" : 
+                    let left = parseArgument(expression.left,scope)
+                    let right = parseArgument(expression.right,scope)
+                    let leftType = typeof left
+                    let rightType = typeof right
+                    if(leftType.toString() == "string" && rightType.toString() == "number"){
+                        final = ""
+                        for(let i = 0; i < right; i++){
+                            final += left
+                        }
+                        return final
+                    }else {     
+                        return  left * right 
+                    }
+                    break;
+                case ">=" || "=>" :
+                    return parseArgument(expression.left,scope) >= parseArgument(expression.right,scope)
+                    break;
+                case "<=" || "=<" :
+                    return parseArgument(expression.left,scope) <= parseArgument(expression.right,scope)
+                    break;
+                case "<" :
+                    return parseArgument(expression.left,scope) < parseArgument(expression.right,scope)
+                    break;
+                case ">" :
+                    return parseArgument(expression.left,scope) > parseArgument(expression.right,scope)
+                    break;
+                case "==" :
+                    return parseArgument(expression.left,scope) == parseArgument(expression.right,scope)
+                    break;
+            }
+        case "LogicalExpression":
+            switch(expression.operator){
+                case "and":
+                    return parseExpression(expression.left) == true && parseExpression(expression.right) == true
+                    break;
+            }
+            break;
+        case 'IndexExpression':
+            console.log(parseArgument(
+                expression.base,scope
+            ));
+            return parseArgument(
+                expression.base,scope
+            )[parseArgument(expression.index,scope)];
+            break
+        case "MemberExpression" :
+            //console.log(expression)
+            switch(expression.indexer){
+                case ".":
+                    return parseArgument(expression.base,scope)[expression.identifier.name]
+                    break;
+            }
+            break;
+    }
+}
+
+async function executeBlock(block,scope){
+    //console.log("scope block" +JSON.stringify(scope))
+    switch(block.type){
+        case "CallStatement":
+            let CallStatementBlockExpression = block.expression
+            switch(CallStatementBlockExpression.type){
+                case "CallExpression":
+                    let CallExpressionBlock = CallStatementBlockExpression
+                    if(functions[CallExpressionBlock.base.name]){
+                        await functions[CallExpressionBlock.base.name].call(CallExpressionBlock.arguments,scope)
+                    }
+                    break;
+            }
+        break;
+
+        case "AssignmentStatement":
+            let variables = block.variables
+            let inits = block.init
+            for(let i = 0; i < variables.length; i++){
+                let variable = variables[i]
+                let init = inits[i]
+                data[variable.name] = parseArguments([init],scope)
+            }
+            break;
+
+        case "LocalStatement":
+            let localVariables = block.variables
+            let localInits = block.init
+            for(let i = 0; i < localVariables.length; i++){
+                let variable = localVariables[i]
+                let init = localInits[i]
+                console.log(scope)
+                scope[variable.name] = parseArguments([init],scope)
+                return {"scope":scope}
+            }
+            break;
+        case "IfStatement" :
+            let clauses = block.clauses 
+            checkClauseBlock(clauses,scope)
+            break;
+        case "FunctionDeclaration":
+            functions[block.identifier.name] = {
+                call: (arguments,functionScope) => {
+                    let argsScope = {}
+                    for(let i = 0;i<block.parameters.length;i++){
+                        let parameter = block.parameters[i]
+                        argsScope[parameter.name] = parseArgument(arguments[i])
+                    }
+                    functionScope = {...functionScope, ...argsScope}
+                    executeBlocks(block.body,functionScope)
+                }
+            }
+            break;
+        case "ForNumericStatement" :
+            //console.log(scope)
+            scope[block.variable.name] = parseArgument(block.start)
+            for(parseArgument(block.start);  scope[block.variable.name] < parseArgument(block.end);  scope[block.variable.name] +=  parseArgument(block.step)){
+                executeBlocks(block.body,scope)
+            }
+            scope[block.variable.name] = undefined
+            break;
+    }
+
+}
+
+function checkClause(clause,scope){
+    if(parseExpression(clause.condition)==true){
+        executeBlocks(clause.body,scope)
+    }
+}
+
+function checkClauseBlock(clauses,scope){
+
+    for(let i = 0; i < clauses.length; i++){
+        let clause = clauses[i]
+        if(clause.type != "ElseClause"){
+            if(parseExpression(clause.condition)== true){
+                executeBlocks(clause.body)
+                break;
+            }else{
+                continue;
+            }
+        }else{
+            executeBlocks(clause.body)
+        }
+    }
+
+}
+
+async function executeBlocks(blocks,scope){
+    for(let i=0; i < blocks.length;i++){
+        let block = blocks[i]
+        if(scope == undefined){
+            scope = {}
+        }
+        let resultScope = await executeBlock(block,scope)
+        if(resultScope != undefined) {
+            if(resultScope.scope != undefined){
+                scope = {...scope, ...resultScope.scope}
+            }
+        }
+
+        //console.log("scope " +JSON.stringify(scope))
+
+    }
+}
+
+return {
+    interpret: async (code, methods)=>{
+        var body = code.body
+        functions = {...functions, ...methods}
+        return new Promise((resolve,reject)=>{ 
+            resolve(executeBlocks(body,{}));
+        })
+    },
+    parse: parseArgument
+
+}
+})();
+    var Lua = {
+        execute: async (source, methods) => {
+            var ast = lp.parse(source);
+            return await LuaInterpreter.interpret(ast,methods);
+        },
+        parse: (a,s)=>{ return LuaInterpreter.parse(a,s) }
     }
     if(typeof module == 'undefined') {
         window.Lua = Lua;
