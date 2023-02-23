@@ -4,7 +4,7 @@ Run Lua in Node, Deno, and your browser!
 ## Credits
 [sawcce/lua-interpreter, license unknown](https://github.com/sawcce/lua-interpreter); [fstirlitz/luaparse, MIT license](https://github.com/fstirlits/luaparse)
 
-RunLua.JS contains a modified version of `lua-interpreter` built-in. It is modified to accomodate our needs, like integrating easily with RunLua.JS, and handling arrays and objects.
+RunLua.JS contains a modified version of `lua-interpreter` built-in. It is modified to work in a browser and have more features.
 
 ## Documentation
 It contains one async. function:
